@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能裁判文书分析系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .app {
+            width: 1360px;
+            max-width: 100%;
+            height: 90vh;
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #13203a, #1e3257);
+            padding: 16px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .header h1 { color: #fff; font-size: 20px; font-weight: 600; }
+        .header h1 span { color: #d4af37; }
+        .header .badge { color: rgba(255,255,255,0.7); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .header .dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; display: inline-block; }
+        .body { display: flex; flex: 1; overflow: hidden; }
+        .left {
+            width: 42%; padding: 24px; background: #fafbfc;
+            border-right: 1px solid #e9edf2;
+            display: flex; flex-direction: column;
+        }
+        .left h3 { font-size: 15px; color: #1a2a4a; margin-bottom: 4px; }
+        .left .desc { font-size: 13px; color: #8896a8; margin-bottom: 16px; }
+        .upload-box {
+            border: 2px dashed #d0d7e2; border-radius: 12px; padding: 20px;
+            text-align: center; background: #fff; margin-bottom: 14px;
+            position: relative; cursor: pointer; transition: 0.2s;
+        }
+        .upload-box:hover { border-color: #1e3257; background: #f8faff; }
+        .upload-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .upload-box .icon { font-size: 28px; display: block; }
+        .upload-box .txt { font-size: 14px; color: #4a5a72; }
+        .upload-box .hint { font-size: 12px; color: #a0aec0; margin-top: 4px; }
+        .file-name { display: none; margin-top: 8px; background: #eef2f7; padding: 4px 14px; border-radius: 20px; font-size: 13px; }
+        .file-name.show { display: inline-block; }
+        textarea {
+            flex: 1; min-height: 120px; padding: 14px 16px;
+            border: 1px solid #d0d7e2; border-radius: 12px; font-size: 14px;
+            resize: none; font-family: inherit; margin-bottom: 12px;
+        }
+        textarea:focus { outline: none; border-color: #1e3257; box-shadow: 0 0 0 3px rgba(30,50,87,0.08); }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            flex: 1; min-width: 80px; padding: 11px 16px; border: none;
+            border-radius: 10px; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: 0.2s; display: flex; align-items: center;
+            justify-content: center; gap: 6px;
+        }
+        .btn-primary { background: #1e3257; color: #fff; box-shadow: 0 4px 12px rgba(30,50,87,0.25); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(30,50,87,0.3); }
+        .btn-gold { background: #d4af37; color: #fff; box-shadow: 0 4px 12px rgba(212,175,55,0.3); }
+        .btn-gold:hover { transform: translateY(-2px); }
+        .btn-secondary { background: #eef2f7; color: #4a5a72; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .right {
+            flex: 1; padding: 24px; display: flex; flex-direction: column;
+            background: #ffffff;
+        }
+        .right .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .right .top h3 { font-size: 15px; color: #1a2a4a; }
+        .chat {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+            gap: 14px; padding-right: 4px;
+        }
+        .chat::-webkit-scrollbar { width: 4px; }
+        .chat::-webkit-scrollbar-thumb { background: #d0d7e2; border-radius: 10px; }
+        .msg { display: flex; gap: 10px; animation: fadeUp 0.3s ease; }
+        .msg.user { flex-direction: row-reverse; }
+        .msg .av {
+            width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: #fff; font-weight: 600;
+        }
+        .msg.ai .av { background: #1e3257; }
+        .msg.user .av { background: #d4af37; }
+        .msg .bubble {
+            max-width: 80%; padding: 12px 16px; border-radius: 14px;
+            font-size: 14px; line-height: 1.7; background: #f5f7fa;
+            color: #1a2a4a; border-bottom-left-radius: 4px;
+        }
+        .msg.user .bubble { background: #e8f0fe; border-bottom-right-radius: 4px; border-bottom-left-radius: 14px; }
+        .msg .bubble .time { font-size: 11px; color: #8896a8; margin-top: 6px; text-align: right; }
+        .empty-state {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #b0bccd; text-align: center;
+        }
+        .empty-state .icon { font-size: 48px; opacity: 0.5; }
+        .loading .bubble { display: flex; align-items: center; gap: 12px; }
+        .loading .bubble .dot {
+            width: 8px; height: 8px; background: #8896a8; border-radius: 50%;
+            display: inline-block; animation: bounce 1.4s infinite both;
+        }
+        .loading .bubble .dot:nth-child(2) { animation-delay: 0.2s; }
+        .loading .bubble .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%,80%,100%{ transform: scale(0.6); opacity: 0.4; } 40%{ transform: scale(1); opacity: 1; } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 768px) { .body { flex-direction: column; } .left { width: 100%; border-right: none; border-bottom: 1px solid #e9edf2; } }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <h1>⚖️ 智能<span>裁判文书</span>分析</h1>
+        <div class="badge"><span class="dot"></span> 模拟就绪 · 可对接API</div>
+    </div>
+    <div class="body">
+        <div class="left">
+            <h3>📤 输入文书</h3>
+            <div class="desc">上传文件或粘贴文本，点击分析获得预判结果</div>
+            <div class="upload-box" id="uploadArea">
+                <span class="icon">📂</span>
+                <div class="txt">拖拽 / 点击选择文件</div>
+                <div class="hint">支持 .txt .doc .pdf</div>
+                <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf" />
+                <span class="file-name" id="fileName"></span>
+            </div>
+            <textarea id="textInput" placeholder="在此粘贴裁判文书内容，例如：原告张三诉被告李四民间借贷纠纷..."></textarea>
+            <div class="actions">
+                <button class="btn btn-primary" id="analyzeBtn">🔍 智能分析</button>
+                <button class="btn btn-gold" id="quickBtn">⚡ 快速预判</button>
+                <button class="btn btn-secondary" id="clearBtn">🗑️ 清空</button>
+            </div>
+        </div>
+        <div class="right">
+            <div class="top"><h3>💬 分析结果</h3><span style="font-size:12px;color:#8896a8;">对话形式</span></div>
+            <div class="chat" id="chatContainer">
+                <div class="empty-state" id="emptyState">
+                    <span class="icon">🤖</span>
+                    <div style="margin-top:8px;">等待您的输入</div>
+                    <div style="font-size:13px;opacity:0.6;">点击上方按钮开始分析</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const chat = document.getElementById('chatContainer');
+    const empty = document.getElementById('emptyState');
+    const textInput = document.getElementById('textInput');
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const uploadArea = document.getElementById('uploadArea');
+
+    function mockResponse(type, content) {
+        const cases = {
+            'analyze': `📋 **案由**：民间借贷纠纷\n⚖️ **争议焦点**：借款事实是否成立\n📌 **判决建议**：根据《民法典》第679条，若原告能提供转账凭证及借条，法院应支持其诉求。建议补充银行流水。\n📊 **相似案例**： (2024) 沪01民终1234号`,
+            'quick': `⚡ **预判结论**：被告李四需承担还款责任，预计支持原告诉求的70%。建议双方调解。`
+        };
+        return cases[type] || '分析完成，请查看结果。';
+    }
+
+    function addMessage(role, text, isHtml = false) {
+        empty.style.display = 'none';
+        const div = document.createElement('div');
+        div.className = `msg ${role}`;
+        const avatar = role === 'ai' ? 'AI' : '你';
+        const bubbleContent = isHtml ? text : text.replace(/\n/g, '<br>');
+        div.innerHTML = `
+            <div class="av">${avatar}</div>
+            <div class="bubble">${bubbleContent}<div class="time">${new Date().toLocaleTimeString()}</div></div>
+        `;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addLoading() {
+        empty.style.display = 'none';
+        const div = document.createElement('div');
+        div.className = 'msg ai loading';
+        div.id = 'loadingMsg';
+        div.innerHTML = `
+            <div class="av">AI</div>
+            <div class="bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span> 分析中...</div>
+        `;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function removeLoading() {
+        const el = document.getElementById('loadingMsg');
+        if (el) el.remove();
+    }
+
+    function getContent() {
+        return textInput.value.trim() || '（用户未输入具体文本，系统基于空输入生成示例分析）';
+    }
+
+    function handleAnalyze(type) {
+        const content = getContent();
+        addMessage('user', content);
+        addLoading();
+        setTimeout(() => {
+            removeLoading();
+            const result = mockResponse(type, content);
+            addMessage('ai', result);
+        }, 1200);
+    }
+
+    document.getElementById('analyzeBtn').addEventListener('click', () => handleAnalyze('analyze'));
+    document.getElementById('quickBtn').addEventListener('click', () => handleAnalyze('quick'));
+    document.getElementById('clearBtn').addEventListener('click', () => { textInput.value = ''; });
+
+    fileInput.addEventListener('change', function(e) {
+        if (this.files.length > 0) {
+            fileName.textContent = '📎 ' + this.files[0].name;
+            fileName.classList.add('show');
+            textInput.value = `（已上传文件：${this.files[0].name}，内容将在对接后端后解析）`;
+        }
+    });
+
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#d4af37'; });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = '#d0d7e2'; });
+    uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#d0d7e2'; });
+</script>
+</body>
+</html>
